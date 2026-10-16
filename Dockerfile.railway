@@ -1,0 +1,20 @@
+# Dockerfile สำหรับ service "app" บน Railway (build context = รากโปรเจกต์ เพื่อให้ได้ทั้ง code/ และ prompts/)
+# บน Railway ไม่มี bind mount แบบ docker-compose จึงฝัง prompts เข้า image
+# แก้ prompts แล้ว push ขึ้น GitHub เพื่อ redeploy
+FROM python:3.12-slim
+WORKDIR /app
+COPY code/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+ && useradd --system --no-create-home --uid 10001 appuser
+COPY code/app ./app
+COPY code/static ./static
+COPY prompts ./prompts
+RUN chmod -R a+rX /app
+ENV RULES_PATH=/app/prompts/bot_rules.md \
+    VISION_PROMPT_PATH=/app/prompts/vision_system.md \
+    DIALOGUE_PROMPT_PATH=/app/prompts/dialogue_system.md \
+    PORT=8000
+USER appuser
+EXPOSE 8000
+# Railway ส่งพอร์ตผ่านตัวแปร PORT
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

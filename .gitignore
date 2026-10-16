@@ -1,0 +1,26 @@
+# ความลับ: ห้ามขึ้น GitHub เด็ดขาด
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# สภาพแวดล้อม/แคช/ข้อมูลที่สร้างใหม่ได้
+.venv/
+**/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+code/data/
+code/tests/results/
+
+# ไม่จำเป็นต่อการ deploy / มีข้อมูลอ้างอิงที่ไม่ควรเปิดเผย
+old/
+deploy/
+docs/
+build/
+*.docx
+*.pdf
+Good_Dude_Progress.html

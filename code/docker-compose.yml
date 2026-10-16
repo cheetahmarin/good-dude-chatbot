@@ -1,0 +1,52 @@
+services:
+  lightrag:
+    image: ghcr.io/hkuds/lightrag:latest
+    ports:
+      - "127.0.0.1:9621:9621"
+    env_file: .env
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "9621"
+      WORKING_DIR: /app/data/rag_storage
+      INPUT_DIR: /app/data/inputs
+      # LLM สำหรับสร้าง knowledge graph และตอบคำถาม (ผ่าน OpenRouter)
+      LLM_BINDING: openai
+      LLM_BINDING_HOST: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      LLM_BINDING_API_KEY: ${OPENROUTER_API_KEY:?ตั้ง OPENROUTER_API_KEY ในไฟล์ .env ก่อน}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-4o-mini}
+      # Embedding
+      EMBEDDING_BINDING: openai
+      EMBEDDING_BINDING_HOST: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      EMBEDDING_BINDING_API_KEY: ${OPENROUTER_API_KEY:?ตั้ง OPENROUTER_API_KEY ในไฟล์ .env ก่อน}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-openai/text-embedding-3-large}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-3072}
+      EMBEDDING_USE_BASE64: "false"   # OpenRouter อาจไม่รองรับ base64 ถ้าเจอ error ให้คงค่า false
+      # ภาษาของสรุป entity/relation และการป้องกันการเข้าถึง
+      SUMMARY_LANGUAGE: Thai
+      LIGHTRAG_API_KEY: ${LIGHTRAG_API_KEY:?ตั้ง LIGHTRAG_API_KEY ในไฟล์ .env ก่อน (ถ้าว่าง LightRAG จะเปิดโดยไม่ต้องใช้คีย์)}
+      WHITELIST_PATHS: /health   # ปิดเส้นทาง /api/* (Ollama-compatible) ที่ไม่ต้องใช้คีย์
+      TIMEOUT: "150"
+    volumes:
+      - ./data/rag_storage:/app/data/rag_storage
+      - ./data/inputs:/app/data/inputs
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:9621/health', timeout=4).status == 200 else 1)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file: .env
+    environment:
+      LIGHTRAG_URL: http://lightrag:9621
+    volumes:
+      - ../prompts:/app/prompts:ro
+    depends_on:
+      lightrag:
+        condition: service_started
+    restart: on-failure

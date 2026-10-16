@@ -1,0 +1,60 @@
+[
+  {
+    "id": "I1",
+    "kind": "สลิปโอนเงิน",
+    "image": "slip_01.jpg",
+    "message": "โอนแล้วนะคะ",
+    "expect_image_type": "slip",
+    "expect_all": [
+      "ตรวจสอบยอดเข้าบัญชี"
+    ],
+    "forbid": [
+      "เงินเข้าแล้ว",
+      "ชำระเรียบร้อย"
+    ]
+  },
+  {
+    "id": "I2",
+    "kind": "ฉลากสินค้า (แบรนด์จริง ไม่อยู่ในรายการร้าน)",
+    "image": "label_01.jpg",
+    "message": "ร้านมีตัวนี้ไหม",
+    "expect_image_type": "product_label",
+    "expect_any": [
+      "ไม่พบ",
+      "ไม่มีในรายการ"
+    ]
+  },
+  {
+    "id": "I3",
+    "kind": "ใบเสร็จขอคืนสินค้า",
+    "image": "receipt_01.jpg",
+    "message": "ขอคืนสินค้าได้ไหม",
+    "expect_image_type": "receipt",
+    "expect_all": [
+      "พนักงาน"
+    ]
+  },
+  {
+    "id": "I4",
+    "kind": "สินค้ามีตำหนิ",
+    "image": "defect_01.jpg",
+    "message": "ถุงขาดมาตั้งแต่ซื้อ",
+    "expect_image_type": "defect",
+    "expect_all": [
+      "3 วัน",
+      "พนักงาน"
+    ]
+  },
+  {
+    "id": "I5",
+    "kind": "ป้ายราคา",
+    "image": "price_tag_01.jpg",
+    "message": "",
+    "expect_image_type": "price_tag|product_label",
+    "expect_any": [
+      "ไม่พบ",
+      "ใกล้เคียง",
+      "บาท"
+    ]
+  }
+]

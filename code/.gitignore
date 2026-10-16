@@ -1,0 +1,19 @@
+# ความลับ: ห้าม commit เด็ดขาด
+.env
+.env.*
+!.env.example
+
+# สภาพแวดล้อม/แคช
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# ข้อมูลที่ LightRAG สร้าง (สร้างใหม่ได้ด้วย python scripts/ingest.py) มีแคชคำถามของผู้ใช้
+data/rag_storage/
+data/inputs/
+
+# ผลทดสอบที่รันเอง (ถ้าต้องการแนบรายงานให้คัดลอกออกไป)
+tests/results/
