@@ -6,6 +6,7 @@
   python scripts/run_tests.py --suite context   # ประโยคตามที่ต้องเข้าใจบริบท (ส่ง history ไปด้วย)
   python scripts/run_tests.py --suite chitchat  # ทักทาย/คุยเล่น/ถามกลับ/นอกเรื่อง
   python scripts/run_tests.py --suite image     # รูปภาพ (ต้องมี tests/images/manifest.json)
+  python scripts/run_tests.py --suite order     # สรุปคำสั่งซื้อหลายรอบ (O7 ต้องมี tests/images/slip_01.jpg)
   python scripts/run_tests.py --suite all
 
 ผล "ผ่าน" ที่สคริปต์ตัดสินเป็นเพียงข้อเสนอจากการจับคำสำคัญ (AUTO)
@@ -33,7 +34,7 @@ def contains(text: str, option: str) -> bool:
 def judge(case: dict, data: dict) -> tuple[bool, list[str]]:
     reply = data.get("reply", "")
     problems = []
-    if case.get("expect_image_type") and data.get("image_type") not in case["expect_image_type"].split("|"):
+    if case.get("expect_image_type") and data.get("image_type") != case["expect_image_type"]:
         problems.append(f"ชนิดรูปที่อ่านได้ = {data.get('image_type')!r} (คาดว่า {case['expect_image_type']!r})")
     if case.get("expect_blocked") and not data.get("blocked"):
         problems.append("ควรถูกบล็อกแต่ไม่ถูกบล็อก")
@@ -58,7 +59,7 @@ def run_case(client: httpx.Client, base: str, case: dict, images_dir: Path) -> d
                 r = client.post(
                     f"{base}/api/chat/image",
                     files={"file": (path.name, fh, "image/png" if path.suffix == ".png" else "image/jpeg")},
-                    data={"message": case.get("message", "")},
+                    data={"message": case.get("message", ""), "history": json.dumps(case.get("history", []), ensure_ascii=False)},
                 )
         else:
             r = client.post(f"{base}/api/chat", json={"message": case["message"], "history": case.get("history", [])})
@@ -80,7 +81,7 @@ def run_case(client: httpx.Client, base: str, case: dict, images_dir: Path) -> d
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--suite", choices=["text", "safety", "context", "chitchat", "image", "all"], default="text")
+    ap.add_argument("--suite", choices=["text", "safety", "context", "chitchat", "image", "order", "all"], default="text")
     ap.add_argument("--base", default="http://localhost:8000")
     ap.add_argument("--timeout", type=float, default=120)
     args = ap.parse_args()
@@ -91,7 +92,7 @@ def main() -> None:
     if manifest.exists():
         cases["image"] = json.loads(manifest.read_text(encoding="utf-8"))
 
-    suites = ["text", "safety", "context", "chitchat", "image"] if args.suite == "all" else [args.suite]
+    suites = ["text", "safety", "context", "chitchat", "image", "order"] if args.suite == "all" else [args.suite]
     out_dir = TESTS / "results"
     out_dir.mkdir(exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")

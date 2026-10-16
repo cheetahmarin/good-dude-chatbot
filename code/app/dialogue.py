@@ -26,7 +26,7 @@ from .vision import parse_json
 log = logging.getLogger("gooddude.dialogue")
 
 _CLARIFY_MAX_CHARS = 14
-INTENTS = {"shop", "smalltalk", "clarify", "off_topic"}
+INTENTS = {"shop", "smalltalk", "clarify", "off_topic", "order"}
 _MAX_QUESTION = 500
 _MAX_REPLY = 500
 _HISTORY_MSGS = 6  # ส่งให้ตัววิเคราะห์เฉพาะ 6 ข้อความล่าสุด (3 รอบ)
@@ -175,6 +175,9 @@ def parse_analysis(raw: str, text: str) -> Analysis:
     reply = str(obj.get("reply") or "").strip()
     if intent not in INTENTS:  # ผลแปลก ๆ จากโมเดล: ไม่เชื่อ ใช้ข้อความเดิมของลูกค้า
         return Analysis("shop", text, "", True)
+
+    if intent == "order":  # สรุป/ยืนยัน/แก้ไข/ยกเลิกคำสั่งซื้อ: ตัวสรุปคำสั่งซื้อ (order.py) ทำงานต่อ ไม่ผ่าน RAG
+        return Analysis("order", "", "", True)
 
     if intent == "shop":
         if not question or len(question) > _MAX_QUESTION:

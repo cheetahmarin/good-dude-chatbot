@@ -328,14 +328,14 @@ const API_IMAGE  = API_BASE + "/api/chat/image";   // POST multipart {file, mess
 const API_HEALTH = API_BASE + "/api/health";       // GET → {status:"ok", rag:"ok"}
 const MAX_IMG_MB = 5;
 const DEBUG = params.get('debug') === '1';   // เปิด ?debug=1 เพื่อดูคำถามที่บอทเข้าใจ (ใช้ตอนสาธิต/ทำ test log)
-const MAX_HISTORY = 12;                 // เก็บฝั่งเบราว์เซอร์ เซิร์ฟเวอร์ไม่เก็บประวัติ (stateless)
+const MAX_HISTORY = 20;                 // เก็บฝั่งเบราว์เซอร์ เซิร์ฟเวอร์ไม่เก็บประวัติ (stateless)
 
 /* ============ DATA ============ */
 // q = ส่งคำถามทันที · fill = ใส่ข้อความในช่องพิมพ์ให้ผู้ใช้เติมต่อ · photo = เปิดตัวเลือกไฟล์
 const FUNCTIONS = [
   {e:"🦴", t:"เลือกอาหารให้น้อง", d:"ตามอายุ/ขนาด/โปรตีน", q:"ลูกสุนัขและลูกแมวควรกินอาหารอะไร แล้วสุนัขโตกับแมวโตล่ะ"},
   {e:"💰", t:"ราคาสินค้า", d:"เช็คราคา รหัส ขนาด", fill:"อยากทราบราคา "},
-  {e:"🚚", t:"สั่งซื้อ & จัดส่ง", d:"วิธีสั่ง ค่าส่ง รอบส่ง", q:"ร้านส่งสินค้าไหม ค่าส่งเท่าไหร่ สั่งได้ทางไหนบ้าง"},
+  {e:"🛒", t:"สั่งซื้อ / สรุปยอด", d:"บอกสินค้าและจำนวน", q:"อยากสั่งซื้อ"},
   {e:"🔄", t:"คืนสินค้า", d:"เงื่อนไข / ของมีตำหนิ", q:"คืนสินค้าได้ไหม ต้องทำยังไง"},
   {e:"🎁", t:"สมาชิก & โปร", d:"แต้มสะสม โปรประจำ", q:"มีสมาชิกหรือโปรโมชันอะไรบ้าง"},
   {e:"🍖", t:"ลองอาหารฟรี", d:"ซองทดลอง 50 กรัม", q:"ลองอาหารก่อนซื้อได้ไหม"},
@@ -467,7 +467,7 @@ async function callApi(req){
   try{
     let res;
     if(req.file){
-      const fd=new FormData(); fd.append('file',req.file); fd.append('message',req.text);
+      const fd=new FormData(); fd.append('file',req.file); fd.append('message',req.text); fd.append('history',JSON.stringify(chatHistory));
       res=await fetch(API_IMAGE,{method:'POST',body:fd});
     }else{
       res=await fetch(API_CHAT,{method:'POST',headers:{'Content-Type':'application/json'},
@@ -492,18 +492,20 @@ async function callApi(req){
     if(DEBUG && body.intent && body.intent!=='shop') meta.push(['เจตนา: '+body.intent,false]);
     addMsg('bot', fmt(body.reply ?? ''), {meta});
     if(Array.isArray(body.suggestions)) setChips(body.suggestions.length?body.suggestions:CHIPS);
-    if(!req.file){
-      // ข้อความที่ถูกบล็อกไม่เก็บเข้าประวัติ (กันข้อความโจมตีถูกส่งซ้ำไปกับทุกคำถามถัดไป)
-      if(!body.blocked) chatHistory.push({role:'user',content:req.text},{role:'assistant',content:body.reply});
-      chatHistory=chatHistory.slice(-MAX_HISTORY);
+    // ข้อความที่ถูกบล็อกไม่เก็บเข้าประวัติ (กันข้อความโจมตีถูกส่งซ้ำไปกับทุกคำถามถัดไป)
+    // รูปที่ส่งเก็บเป็นข้อความกำกับชนิดรูป ให้คำถามถัดไป (เช่น หลังส่งสลิป) เข้าใจบริบท
+    if(!body.blocked){
+      const label = req.file ? '[ส่งรูป: '+(body.image_type||'other')+'] ' : '';
+      chatHistory.push({role:'user',content:(label+req.text).trim()},{role:'assistant',content:body.reply});
     }
+    chatHistory=chatHistory.slice(-MAX_HISTORY);
   }catch(e){
     stop();
     console.error('[chat] request failed:', e);
     const isNet = e instanceof TypeError && /fetch|network|load failed/i.test(e.message);
     showError(isNet
-      ? 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ (เรียก '+(API_BASE||location.origin)+' ไม่สำเร็จ) กรุณาตรวจว่า container รันอยู่แล้วลองใหม่ค่ะ'
-      : 'หน้าเว็บประมวลผลคำตอบไม่สำเร็จ ('+e.message+') กดปุ่ม F12 ดูแท็บ Console แล้วลองใหม่ค่ะ',
+      ? 'ตอนนี้เชื่อมต่อร้านไม่ได้ค่ะ กรุณาตรวจอินเทอร์เน็ตแล้วกด "ลองใหม่" อีกครั้งนะคะ'
+      : 'ขออภัยค่ะ ระบบแสดงคำตอบไม่สำเร็จ กรุณากด "ลองใหม่" อีกครั้งนะคะ',
       ()=>callApi(req));
   }finally{ setBusy(false); }
 }

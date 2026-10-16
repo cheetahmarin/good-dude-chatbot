@@ -159,6 +159,9 @@ def _clean_number(v: Any) -> float | None:
     return x if math.isfinite(x) and 0 < x < 10_000_000 else None
 
 
+clean_number = _clean_number  # ใช้ร่วมกับ order.py
+
+
 def sanitize(info: Any) -> dict[str, Any]:
     """บังคับรูปแบบผลอ่านรูป: ชนิดต้องอยู่ในรายการ ช่องทุกช่องมีชนิดและความยาวที่แน่นอน ไม่โยน exception"""
     if not isinstance(info, dict):
@@ -277,7 +280,11 @@ def plan(info: dict[str, Any], caption: str = "", today: date | None = None) -> 
         amount = _baht(f.get("amount"))
         if amount is None:
             return "reply", RETAKE_TEXT
-        lines = ["น้องดู๊ดอ่านสลิปได้ดังนี้ค่ะ", f"- ยอดโอน: {amount} บาท"]
+        lines = [
+            "ได้รับสลิปแล้วค่ะ รอทางร้านตรวจสอบการชำระเงิน",
+            "น้องดู๊ดอ่านสลิปได้ดังนี้ค่ะ",
+            f"- ยอดโอน: {amount} บาท",
+        ]
         slip_date = normalize_date(f.get("date"))
         if slip_date:
             lines.append(f"- วันที่: {th_date(slip_date)}")

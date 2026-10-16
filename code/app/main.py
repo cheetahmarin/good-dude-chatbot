@@ -11,7 +11,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import dialogue, guard, rag, security, vision
+import json
+
+from . import dialogue, guard, order, rag, security, vision
 from .blocklist import Blocklist
 from .categories import BLOCKLIST_CODE, BLOCKLIST_MESSAGE
 from .config import get_settings
@@ -153,6 +155,28 @@ def _clean_history(history: list[Turn]) -> list[dict[str, str]]:
     return out
 
 
+def _parse_history(raw: str) -> list[dict[str, str]]:
+    """ประวัติแชทที่แนบมากับรูป (multipart ส่งเป็นสตริง JSON) ผิดรูปแบบหรือยาวเกินให้ถือว่าไม่มี"""
+    if not raw or len(raw) > 200_000:
+        return []
+    try:
+        turns = [Turn(**t) for t in json.loads(raw)[-50:]]
+    except (ValueError, TypeError):
+        return []
+    return _clean_history(turns)
+
+
+async def _slip_followup(info: dict, caption: str, history: list[dict[str, str]]) -> str:
+    """หลังรับสลิป: เทียบยอดกับคำสั่งซื้อในแชท และถามเฉพาะข้อมูลจัดส่งที่ยังขาด"""
+    state = None
+    if history:
+        state = await order.extract(
+            app.state.http, settings, caption or "ส่งสลิปการชำระเงิน", history, blocklist,
+        )
+    amount = vision.clean_number((info.get("fields") or {}).get("amount"))
+    return order.slip_additions(state, None if amount is None else round(amount))
+
+
 def _validate_message(text: str) -> str:
     text = text.strip()
     if not text:
@@ -251,7 +275,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
             )
 
         # 3) คุยเล่น / ถามกลับ / นอกเรื่อง: ตอบด้วยบุคลิกของน้องดู๊ด (ตรวจขาออกก่อนส่ง)
-        if analysis.intent != "shop":
+        if analysis.intent not in ("shop", "order"):
             out = await guard.check(client, settings, blocklist, analysis.reply, "output")
             if not out.safe:
                 return ChatResponse(
@@ -262,6 +286,14 @@ async def chat(req: ChatRequest) -> ChatResponse:
                 reply=analysis.reply, intent=analysis.intent,
                 suggestions=dialogue.DEFAULT_SUGGESTIONS if analysis.intent != "clarify" else [], elapsed_ms=ms(),
             )
+
+        # 3.5) สั่งซื้อ/สรุปยอด/แก้ไข/ยกเลิก: โมเดลอ่านเฉพาะรหัสสินค้ากับจำนวน ส่วนราคาและข้อความคำนวณในโค้ด
+        if analysis.intent == "order":
+            state = await order.extract(client, settings, text, history, blocklist)
+            if state is None:
+                return ChatResponse(reply=order.ERROR_TEXT, intent="order", elapsed_ms=ms())
+            reply, chips = order.render(state)
+            return ChatResponse(reply=reply, intent="order", suggestions=chips, elapsed_ms=ms())
 
         # 4) เรื่องของร้าน: ค้นด้วยคำถามที่ครบในตัว (เข้าใจประโยคตามจากประวัติแชท)
         question = analysis.question or text
@@ -289,6 +321,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
 async def chat_image(
     file: UploadFile = File(...),
     message: str = Form(""),
+    history: str = Form(""),
 ) -> ChatResponse:
     t0 = time.perf_counter()
     client = app.state.http
@@ -326,6 +359,8 @@ async def chat_image(
 
         kind, content = vision.plan(info, caption)
         if kind == "reply":
+            if image_type == "slip" and content != vision.RETAKE_TEXT:
+                content += "\n\n" + await _slip_followup(info, caption, _parse_history(history))
             return ChatResponse(reply=content, image_type=image_type, elapsed_ms=ms())
 
         reply, out_blocked, cats = await _answer(content, [])

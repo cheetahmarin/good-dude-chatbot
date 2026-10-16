@@ -13,6 +13,7 @@ RUN chmod -R a+rX /app
 ENV RULES_PATH=/app/prompts/bot_rules.md \
     VISION_PROMPT_PATH=/app/prompts/vision_system.md \
     DIALOGUE_PROMPT_PATH=/app/prompts/dialogue_system.md \
+    ORDER_PROMPT_PATH=/app/prompts/order_system.md \
     PORT=8000
 USER appuser
 EXPOSE 8000

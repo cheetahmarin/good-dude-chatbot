@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     request_timeout_seconds: float = 60.0
     guard_timeout_seconds: float = 20.0
     max_message_chars: int = 1000
-    max_history_turns: int = 6
+    max_history_turns: int = 10
     max_history_turn_chars: int = 1500  # ต่อข้อความในประวัติ (ประวัติมาจากเบราว์เซอร์ จึงไม่น่าไว้ใจ)
     max_history_total_chars: int = 8000
     max_image_mb: float = 5.0
@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     rules_path: str = str(_PROJECT_ROOT / "prompts" / "bot_rules.md")
     vision_prompt_path: str = str(_PROJECT_ROOT / "prompts" / "vision_system.md")
     dialogue_prompt_path: str = str(_PROJECT_ROOT / "prompts" / "dialogue_system.md")
+    order_prompt_path: str = str(_PROJECT_ROOT / "prompts" / "order_system.md")
     blocklist_path: str = str(_CODE_ROOT / "app" / "blocklist.txt")
     static_dir: str = str(_CODE_ROOT / "static")
 

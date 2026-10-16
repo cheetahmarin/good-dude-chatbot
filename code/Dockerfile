@@ -10,7 +10,8 @@ RUN chmod -R a+rX /app
 # prompts/ ถูก mount จากโฟลเดอร์โปรเจกต์ผ่าน docker-compose (แก้ไฟล์แล้วมีผลทันที)
 ENV RULES_PATH=/app/prompts/bot_rules.md \
     VISION_PROMPT_PATH=/app/prompts/vision_system.md \
-    DIALOGUE_PROMPT_PATH=/app/prompts/dialogue_system.md
+    DIALOGUE_PROMPT_PATH=/app/prompts/dialogue_system.md \
+    ORDER_PROMPT_PATH=/app/prompts/order_system.md
 # ไม่รันด้วย root: ถ้าแอปถูกเจาะ จะเขียนอะไรในคอนเทนเนอร์ไม่ได้
 USER appuser
 EXPOSE 8000
