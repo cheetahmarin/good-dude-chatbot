@@ -148,6 +148,8 @@ def parse_state(raw: str, blocklist: Blocklist | None = None) -> OrderState | No
     state.address = _text(cust.get("address"), 300)
     phone = re.sub(r"[\s\-.()]", "", str(cust.get("phone") or ""))
     state.phone = phone if _PHONE_RE.match(phone) else None
+    if state.kind == "shipping_info" and not (state.name or state.address or state.phone):
+        state.kind = "cart"  # ไม่มีข้อมูลผู้รับในข้อความ (เช่น แค่ตอบ "ให้ส่งที่บ้าน") = ปรับตะกร้า/วิธีรับ
     return state
 
 
@@ -243,8 +245,11 @@ def missing_info(state: OrderState) -> list[str]:
     miss = []
     if not state.name:
         miss.append("ชื่อ–นามสกุลผู้รับ")
-    if state.receive != "pickup" and not (state.address and _POSTCODE_RE.search(state.address)):
-        miss.append("ที่อยู่จัดส่ง พร้อมรหัสไปรษณีย์")
+    if state.receive != "pickup":
+        if not state.address:
+            miss.append("ที่อยู่จัดส่ง พร้อมรหัสไปรษณีย์")
+        elif not _POSTCODE_RE.search(state.address):
+            miss.append("รหัสไปรษณีย์ของที่อยู่จัดส่ง")
     if not state.phone:
         miss.append("เบอร์ติดต่อ")
     return miss

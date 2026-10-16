@@ -76,9 +76,15 @@ _CRIME_RE = re.compile(
 _LEXICAL_GATES = {"S6": _HEALTH_RE, "S1": _VIOLENCE_RE, "S2": _CRIME_RE}
 
 
-def pick_blocked(codes: list[str], text: str = "") -> list[str]:
-    """ตัดหมวดที่ไวเกิน (S6, S1, S2) ออก ถ้าข้อความไม่มีคำที่เกี่ยวข้องจริง"""
+def pick_blocked(codes: list[str], text: str = "", direction: str = "output") -> list[str]:
+    """ตัดหมวดที่ไวเกิน (S6, S1, S2) ออก ถ้าข้อความไม่มีคำที่เกี่ยวข้องจริง
+
+    S7 (Privacy) ขาเข้าไม่บล็อก: ลูกค้าที่สั่งซื้อต้องส่งชื่อ ที่อยู่ เบอร์โทรของตัวเองให้ร้าน
+    การขอข้อมูลลูกค้าคนอื่นตัดสินในโค้ดแล้ว (asks_other_customer_data) ส่วนขาออกยังบล็อก S7 เต็มรูปแบบ
+    """
     codes = [c for c in codes if not (c in _LEXICAL_GATES and text and not _LEXICAL_GATES[c].search(text))]
+    if direction == "input":
+        codes = [c for c in codes if c != "S7"]
     return _pick_blocked(codes)
 
 
@@ -119,7 +125,7 @@ async def classify(
     unsafe, codes = parse_verdict(raw or "")
     if not unsafe:
         return False, []
-    blocked = pick_blocked(codes, text)
+    blocked = pick_blocked(codes, text, direction)
     return bool(blocked), blocked
 
 

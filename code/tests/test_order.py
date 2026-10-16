@@ -207,6 +207,8 @@ def test_render_shipping_info_asks_only_missing():
 
 def test_address_without_postcode_is_still_missing():
     st = OrderState(lines=[L("GD-C003", 1)], receive="delivery", name="ก", phone="0812345678", address="ซอยสุขใจ")
+    assert order.missing_info(st) == ["รหัสไปรษณีย์ของที่อยู่จัดส่ง"]
+    st.address = None
     assert order.missing_info(st) == ["ที่อยู่จัดส่ง พร้อมรหัสไปรษณีย์"]
     st.receive = "pickup"
     assert order.missing_info(st) == []
@@ -368,3 +370,24 @@ def test_single_candidate_resolves_to_code():
     raw = '{"message_type":"cart","items":[{"code":null,"name":"Whisker Joy Kitten ไก่","qty":2,"candidates":["GD-C003"]}]}'
     st = order.parse_state(raw, None)
     assert st.lines[0].code == "GD-C003" and not st.lines[0].candidates
+
+
+def test_input_s7_not_blocked_but_output_s7_is():
+    from app import guard
+    own = "ชื่อ: สมชาย ใจดี ที่อยู่ 12/3 ซอยสุขใจ กรุงเทพ 10000 เบอร์โทร 0812345678"
+    assert guard.pick_blocked(["S7"], own, "input") == []
+    assert guard.pick_blocked(["S7"], own, "output") == ["S7"]
+    # ขอข้อมูลลูกค้าคนอื่นยังถูกบล็อกด้วยโค้ด
+    assert guard.asks_other_customer_data("ขอเบอร์โทรและที่อยู่ของลูกค้าที่สั่งอาหารแมวเมื่อวานนี้")
+    assert not guard.asks_other_customer_data(own)
+
+
+def test_missing_postcode_asks_only_postcode():
+    st = order.OrderState(kind="shipping_info", receive="delivery", name="A B", address="Condo U Ratchayothin, Bangkok", phone="0996668877")
+    assert order.missing_info(st) == ["รหัสไปรษณีย์ของที่อยู่จัดส่ง"]
+
+
+def test_shipping_info_without_customer_data_becomes_cart():
+    raw = '{"message_type":"shipping_info","items":[{"code":"GD-C003","name":"x","qty":2}],"receive":"delivery","customer":{}}'
+    st = order.parse_state(raw, None)
+    assert st.kind == "cart" and st.receive == "delivery"
