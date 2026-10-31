@@ -391,3 +391,18 @@ def test_shipping_info_without_customer_data_becomes_cart():
     raw = '{"message_type":"shipping_info","items":[{"code":"GD-C003","name":"x","qty":2}],"receive":"delivery","customer":{}}'
     st = order.parse_state(raw, None)
     assert st.kind == "cart" and st.receive == "delivery"
+
+
+def test_merge_postcode_from_followup_message():
+    st = OrderState(kind="shipping_info", address="36 ท่าข้าม บางขุนเทียน", receive="delivery")
+    order.merge_postcode(st, "10150 ครับ")
+    assert st.address.endswith("10150") and not any("รหัสไปรษณีย์" in x for x in order.missing_info(st))
+
+
+def test_merge_postcode_ignores_phone_and_existing_postcode():
+    st = OrderState(kind="shipping_info", address="36 ท่าข้าม บางขุนเทียน")
+    order.merge_postcode(st, "เบอร์ 0912345678")
+    assert st.address == "36 ท่าข้าม บางขุนเทียน"
+    st2 = OrderState(kind="shipping_info", address="36 ท่าข้าม กรุงเทพ 10150")
+    order.merge_postcode(st2, "20000")
+    assert st2.address.endswith("10150")

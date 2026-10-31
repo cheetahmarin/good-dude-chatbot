@@ -240,6 +240,16 @@ def _unresolved_text(lines: list[Line]) -> list[str]:
     return out
 
 
+def merge_postcode(state: OrderState, text: str) -> None:
+    """ลูกค้าตอบเฉพาะรหัสไปรษณีย์ (เช่น "10150") โมเดลบางครั้งคัดลอกที่อยู่เดิมโดยไม่ใส่รหัสใหม่
+    จึงเติมในโค้ด: ที่อยู่ยังไม่มีรหัส + ข้อความล่าสุดมีเลข 5 หลัก (ไม่ใช่ส่วนของเบอร์โทร) = ต่อท้ายที่อยู่"""
+    if not state.address or _POSTCODE_RE.search(state.address):
+        return
+    m = _POSTCODE_RE.search(text)
+    if m and state.address:
+        state.address = f"{state.address} {m.group(0)}"[:300]
+
+
 def missing_info(state: OrderState) -> list[str]:
     """ข้อมูลที่ยังขาดสำหรับจัดส่ง (คืนเฉพาะที่ยังไม่ได้รับ) ถ้ารับที่ร้านเองไม่ต้องใช้ที่อยู่"""
     miss = []
@@ -425,4 +435,6 @@ async def extract(
         log.error("order extract: unparsable model output")
         return None
     state.has_slip = has_slip(history)
+    if state.kind == "shipping_info":
+        merge_postcode(state, text)
     return state
